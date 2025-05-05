@@ -6,7 +6,7 @@ import io
 import os
 import gc
 import requests
-
+app = FastAPI()
 HF_REPO = "https://huggingface.co/Greeshma06/PiiMasking/resolve/main/"
 ONNX_PATH = "roberta_pii.onnx"
 TOKENIZER_DIR = "fine_tuned_roberta_pii"
@@ -121,7 +121,11 @@ def mask_pii(text: str):
     return masked_text, highlights
 
 # FastAPI app definition
-app = FastAPI()
+# app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "API is working"}
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -129,10 +133,6 @@ async def upload_file(file: UploadFile = File(...)):
     content = await file.read()
     print(f"📄 File size: {len(content)} bytes")
 
-    try:
-        text = extract_text(file, content)
-    except ValueError as e:
-        return {"error": str(e)}
 
     print("🧠 Running inference...")
     masked_text, highlights = mask_pii(text)
