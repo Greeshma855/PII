@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: pii-masking-api
+    env: docker
+    plan: free
+    region: oregon

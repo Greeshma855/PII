@@ -8,8 +8,35 @@ import pytesseract
 import io
 
 
-tokenizer = RobertaTokenizerFast.from_pretrained("./fine_tuned_roberta_pii")
-session = ort.InferenceSession("roberta_pii.onnx")
+import os
+import requests
+
+HF_REPO = "https://huggingface.co/Greeshma06/PiiMasking/resolve/main/"
+ONNX_PATH = "roberta_pii.onnx"
+TOKENIZER_DIR = "fine_tuned_roberta_pii"
+TOKENIZER_FILES = [
+    "special_tokens_map.json", "tokenizer_config.json",
+    "tokenizer.json", "vocab.json", "merges.txt"
+]
+
+# Download ONNX model
+if not os.path.exists(ONNX_PATH):
+    print("🔽 Downloading ONNX model...")
+    with open(ONNX_PATH, "wb") as f:
+        f.write(requests.get(HF_REPO + ONNX_PATH).content)
+
+# Download tokenizer files
+os.makedirs(TOKENIZER_DIR, exist_ok=True)
+for file in TOKENIZER_FILES:
+    path = os.path.join(TOKENIZER_DIR, file)
+    if not os.path.exists(path):
+        print(f"🔽 Downloading {file}...")
+        with open(path, "wb") as f:
+            f.write(requests.get(HF_REPO + f"{TOKENIZER_DIR}/{file}").content)
+
+tokenizer = RobertaTokenizerFast.from_pretrained(TOKENIZER_DIR)
+session = ort.InferenceSession(ONNX_PATH)
+
 
 LABEL_MAP = {
     1: "aadhaar_id", 2: "account_name", 3: "account_number", 4: "address",
@@ -130,3 +157,6 @@ async def upload_file(file: UploadFile = File(...)):
 @app.get("/download/{filename}")
 async def download_file(filename: str):
     return FileResponse(filename, media_type="text/plain", filename=filename)
+
+
+

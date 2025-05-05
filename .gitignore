@@ -1,3 +1,4 @@
-app/fine_tuned_roberta_pii
-app/roberta_pii.onnx
-app/fine_tuned_roberta_pii.zip
+__pycache__/
+*.pyc
+*.onnx
+fine_tuned_roberta_pii/
