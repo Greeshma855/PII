@@ -2,13 +2,9 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
 import onnxruntime as ort
 from transformers import RobertaTokenizerFast
-from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
-import pytesseract
 import io
-
-
 import os
+import gc
 import requests
 
 HF_REPO = "https://huggingface.co/Greeshma06/PiiMasking/resolve/main/"
@@ -19,13 +15,13 @@ TOKENIZER_FILES = [
     "tokenizer.json", "vocab.json", "merges.txt"
 ]
 
-# Download ONNX model
+# Download ONNX model if not already present
 if not os.path.exists(ONNX_PATH):
     print("🔽 Downloading ONNX model...")
     with open(ONNX_PATH, "wb") as f:
         f.write(requests.get(HF_REPO + ONNX_PATH).content)
 
-# Download tokenizer files
+# Download tokenizer files if not already present
 os.makedirs(TOKENIZER_DIR, exist_ok=True)
 for file in TOKENIZER_FILES:
     path = os.path.join(TOKENIZER_DIR, file)
@@ -34,10 +30,7 @@ for file in TOKENIZER_FILES:
         with open(path, "wb") as f:
             f.write(requests.get(HF_REPO + f"{TOKENIZER_DIR}/{file}").content)
 
-# tokenizer = RobertaTokenizerFast.from_pretrained(TOKENIZER_DIR)
-# session = ort.InferenceSession(ONNX_PATH)
-
-
+# Set label map
 LABEL_MAP = {
     1: "aadhaar_id", 2: "account_name", 3: "account_number", 4: "address",
     5: "age", 6: "amount", 7: "bank", 8: "bban", 9: "bic", 10: "bitcoin_address",
@@ -56,10 +49,8 @@ LABEL_MAP = {
     59: "time", 60: "url", 61: "user_agent", 62: "username", 63: "vehicle_vin",
     64: "vehicle_vrm", 65: "zip_code"
 }
-for key, value in list(LABEL_MAP.items()):
-    LABEL_MAP[key + 65] = value
 
-
+# Memoize the tokenizer and ONNX session using lru_cache for improved performance
 from functools import lru_cache
 
 @lru_cache()
@@ -71,14 +62,7 @@ def get_session():
     return ort.InferenceSession(ONNX_PATH)
 
 
-def extract_text(file: UploadFile, content: bytes) -> str:
-    if file.filename.endswith(".txt"):
-        return content.decode("utf-8")
-    elif file.filename.lower().endswith((".png", ".jpg", ".jpeg")):
-        image = Image.open(io.BytesIO(content))
-        return pytesseract.image_to_string(image)
-    raise ValueError("Unsupported file type")
-
+# Main PII masking function
 def mask_pii(text: str):
     tokenizer = get_tokenizer()
     session = get_session()
@@ -136,6 +120,9 @@ def mask_pii(text: str):
     masked_text = "".join(result)
     return masked_text, highlights
 
+# FastAPI app definition
+app = FastAPI()
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     print("📩 File upload started...")
@@ -161,6 +148,10 @@ async def upload_file(file: UploadFile = File(...)):
         f.write(masked_text)
 
     print(f"✅ Masking done. File saved as: {masked_filename}")
+    
+    # Clean up memory
+    gc.collect()
+
     return {
         "message": "File masked successfully",
         "masked_filename": masked_filename,
@@ -171,6 +162,3 @@ async def upload_file(file: UploadFile = File(...)):
 @app.get("/download/{filename}")
 async def download_file(filename: str):
     return FileResponse(filename, media_type="text/plain", filename=filename)
-
-
-
