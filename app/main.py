@@ -34,8 +34,8 @@ for file in TOKENIZER_FILES:
         with open(path, "wb") as f:
             f.write(requests.get(HF_REPO + f"{TOKENIZER_DIR}/{file}").content)
 
-tokenizer = RobertaTokenizerFast.from_pretrained(TOKENIZER_DIR)
-session = ort.InferenceSession(ONNX_PATH)
+# tokenizer = RobertaTokenizerFast.from_pretrained(TOKENIZER_DIR)
+# session = ort.InferenceSession(ONNX_PATH)
 
 
 LABEL_MAP = {
@@ -59,6 +59,18 @@ LABEL_MAP = {
 for key, value in list(LABEL_MAP.items()):
     LABEL_MAP[key + 65] = value
 
+
+from functools import lru_cache
+
+@lru_cache()
+def get_tokenizer():
+    return RobertaTokenizerFast.from_pretrained(TOKENIZER_DIR)
+
+@lru_cache()
+def get_session():
+    return ort.InferenceSession(ONNX_PATH)
+
+
 def extract_text(file: UploadFile, content: bytes) -> str:
     if file.filename.endswith(".txt"):
         return content.decode("utf-8")
@@ -68,6 +80,8 @@ def extract_text(file: UploadFile, content: bytes) -> str:
     raise ValueError("Unsupported file type")
 
 def mask_pii(text: str):
+    tokenizer = get_tokenizer()
+    session = get_session()
     encoded = tokenizer(
         text,
         return_offsets_mapping=True,
