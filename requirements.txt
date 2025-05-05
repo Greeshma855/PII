@@ -7,3 +7,4 @@ pytesseract
 numpy
 transformers
 torch 
+python-multipart
