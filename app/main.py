@@ -110,6 +110,10 @@ def mask_pii(text: str):
 async def root():
     return {"message": "API is working"}
 
+@app.post("/test-post")
+def test_post():
+    return {"message": "POST works"}
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     try:
