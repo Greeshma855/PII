@@ -7,6 +7,7 @@ import io, os, gc
 from functools import lru_cache
 import tempfile
 
+
 app = FastAPI()
 
 # Constants
@@ -38,12 +39,14 @@ LABEL_MAP = {
 @lru_cache()
 # def get_tokenizer():
 #     return RobertaTokenizerFast.from_pretrained(f"{REPO_ID}/{TOKENIZER_SUBFOLDER}")
-def get_tokenizer():
-    return RobertaTokenizerFast.from_pretrained(
-        "Greeshma06/PiiMasking",
-        subfolder="fine_tuned_roberta_pii"
-    )
+# def get_tokenizer():
+#     return RobertaTokenizerFast.from_pretrained(
+#         "Greeshma06/PiiMasking",
+#         subfolder="fine_tuned_roberta_pii"
+#     )
 
+def get_tokenizer():
+    return RobertaTokenizerFast.from_pretrained("roberta-base")
 
 
 @lru_cache()
